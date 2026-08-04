@@ -1,0 +1,26 @@
+GIMP Palette
+Name: AU Colors
+Columns: 11
+#
+0     0     0     Text
+255   255   255   White
+0     61    115   AU Blue
+0     37    70    AU Blue Dark
+101   90    159   AU Purple
+40    28    65    AU Purple Dark
+55    160   203   AU Cyan
+0     62    92    AU Cyan Dark
+0     171   164   AU Turquoise
+0     69    67    AU Turquoise Dark
+139   173   63    AU Green
+66    88    33    AU Green Dark
+250   187   0     AU Yellow
+99    75    3     AU Yellow Dark
+238   127   0     AU Orange
+95    52    8     AU Orange Dark
+226   0     26    AU Red
+91    12    12    AU Red Dark
+226   0     122   AU Magenta
+95    0     48    AU Magenta Dark
+135   135   135   AU Gray
+75    75    74    AU Gray Dark

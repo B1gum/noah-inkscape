@@ -1,0 +1,15 @@
+GIMP Palette
+Name: Noah Technical
+Columns: 11
+#
+0     0     0     Text
+255   255   255   White
+0     37    70    Primary geometry
+0     61    115   Secondary geometry
+135   135   135   Construction
+230   236   241   Primary fill
+250   187   0     Highlight accent
+254   241   204   Highlight fill
+226   0     26    Warning
+139   173   63    Positive
+101   90    159   Secondary accent
