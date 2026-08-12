@@ -1,0 +1,42 @@
+#!/bin/zsh
+
+set -u
+
+if [[ $# -ne 1 || ! -f "$1" ]]; then
+    printf '%s\n' 'Select an SVG to preview.'
+    exit 0
+fi
+
+svg="$1"
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+renderer="$script_dir/render_thumbnail"
+
+if ! command -v chafa >/dev/null 2>&1; then
+    printf '%s\n\n' 'Visual SVG previews require chafa.'
+    printf '%s\n' 'Install it with:  brew install chafa'
+    exit 0
+fi
+
+cache_dir="${TMPDIR:-/tmp}/noah-inkscape/thumbnails"
+mkdir -p "$cache_dir"
+
+key="$(printf '%s' "$svg" | md5 -q)"
+thumb="$cache_dir/$key.png"
+
+# Regenerate only when the source is newer than the cached thumbnail.
+if [[ ! -f "$thumb" || "$svg" -nt "$thumb" ]]; then
+    if ! "$renderer" "$svg" "$thumb" 640; then
+        printf '%s\n' 'Could not render SVG thumbnail.'
+        exit 0
+    fi
+fi
+
+cols="${COLUMNS:-72}"
+rows="${LINES:-30}"
+(( rows > 4 )) && rows=$((rows - 2))
+
+chafa \
+    --format=symbols \
+    --colors=full \
+    --size="${cols}x${rows}" \
+    "$thumb"

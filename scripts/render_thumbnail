@@ -1,0 +1,52 @@
+#!/bin/zsh
+
+set -euo pipefail
+
+if [[ $# -lt 2 || $# -gt 3 ]]; then
+    echo "Usage: render_thumbnail input.svg output.png [size-px]" >&2
+    exit 1
+fi
+
+svg="$1"
+out="$2"
+size="${3:-512}"
+
+if [[ ! -f "$svg" ]]; then
+    echo "Error: SVG does not exist: $svg" >&2
+    exit 1
+fi
+
+if command -v inkscape >/dev/null 2>&1; then
+    inkscape_cmd="$(command -v inkscape)"
+elif [[ -x "/Applications/Inkscape.app/Contents/MacOS/inkscape" ]]; then
+    inkscape_cmd="/Applications/Inkscape.app/Contents/MacOS/inkscape"
+else
+    echo "Error: could not find Inkscape." >&2
+    exit 1
+fi
+
+mkdir -p "$(dirname "$out")"
+
+# Drawing bounds are ideal for real figures/symbols. Completely blank templates
+# have no drawing bounds, so fall back to the page in that case.
+if ! "$inkscape_cmd" \
+    "$svg" \
+    --export-type=png \
+    --export-filename="$out" \
+    --export-area-drawing \
+    --export-width="$size" \
+    >/dev/null 2>&1
+then
+    "$inkscape_cmd" \
+        "$svg" \
+        --export-type=png \
+        --export-filename="$out" \
+        --export-area-page \
+        --export-width="$size" \
+        >/dev/null 2>&1
+fi
+
+if [[ ! -s "$out" ]]; then
+    echo "Error: Inkscape did not create thumbnail: $out" >&2
+    exit 1
+fi

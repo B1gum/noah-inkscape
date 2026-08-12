@@ -1,0 +1,32 @@
+#!/bin/zsh
+
+set -euo pipefail
+
+if [[ $# -ne 1 ]]; then
+    echo "Usage: open_figure path/to/figure.svg"
+    exit 1
+fi
+
+svg="$1"
+
+if [[ ! -f "$svg" ]]; then
+    echo "Error: SVG does not exist:"
+    echo "  $svg"
+    exit 1
+fi
+
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+watch_script="$script_dir/watch_figure"
+
+# Start/show the document first so the Hammerspoon lifecycle manager can see a
+# matching window as soon as the watcher metadata appears.
+open -a "Inkscape" "$svg"
+
+if [[ -x "$watch_script" ]]; then
+    nohup "$watch_script" "$svg" \
+        </dev/null \
+        >/dev/null \
+        2>&1 &
+else
+    echo "Warning: watch_figure is not executable."
+fi

@@ -1,0 +1,58 @@
+#!/bin/zsh
+
+set -euo pipefail
+
+if [[ $# -lt 2 || $# -gt 3 ]]; then
+    echo "Usage: new_figure <figure-name> <figures-directory> [template.svg]"
+    exit 1
+fi
+
+name="$1"
+figures_dir="$2"
+
+# Find this repository from the script location
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+repo_root="$(cd "$script_dir/.." && pwd)"
+
+# If no template was supplied, retain the old default.
+template="${3:-$repo_root/templates/noah-technical-full.svg}"
+
+# Require simple LaTeX-friendly filenames
+if ! printf '%s' "$name" | grep -Eq '^[a-z0-9][a-z0-9_-]*$'; then
+    echo "Error: invalid figure name '$name'"
+    echo "Use lowercase letters, numbers, underscores and hyphens."
+    echo "Example: beam_fbd"
+    exit 1
+fi
+
+if [[ ! -f "$template" ]]; then
+    echo "Error: template not found:"
+    echo "  $template"
+    exit 1
+fi
+
+if [[ "${template:e}" != "svg" ]]; then
+    echo "Error: template must be an .svg file:"
+    echo "  $template"
+    exit 1
+fi
+
+mkdir -p "$figures_dir"
+
+destination="$figures_dir/$name.svg"
+
+if [[ -e "$destination" ]]; then
+    echo "Error: figure already exists:"
+    echo "  $destination"
+    exit 1
+fi
+
+cp "$template" "$destination"
+
+echo "Created:"
+echo "  $destination"
+
+echo "Template:"
+echo "  $template"
+
+"$script_dir/open_figure" "$destination"

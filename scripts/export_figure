@@ -1,0 +1,92 @@
+#!/bin/zsh
+
+set -euo pipefail
+
+if [[ $# -ne 1 ]]; then
+    echo "Usage: export_figure path/to/figure.svg"
+    exit 1
+fi
+
+svg="$1"
+
+if [[ ! -f "$svg" ]]; then
+    echo "Error: SVG does not exist:"
+    echo "  $svg"
+    exit 1
+fi
+
+if [[ "${svg:e}" != "svg" ]]; then
+    echo "Error: input must be an .svg file:"
+    echo "  $svg"
+    exit 1
+fi
+
+# Canonicalize so temporary export copies can live beside the source. Keeping the
+# copy in the source directory preserves relative image hrefs/imports.
+svg_dir="$(cd "$(dirname "$svg")" && pwd)"
+svg="$svg_dir/$(basename "$svg")"
+base="${svg:r}"
+pdf="${base}.pdf"
+pdf_tex="${base}.pdf_tex"
+
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+strip_script="$script_dir/strip_export_layers.py"
+
+if command -v inkscape >/dev/null 2>&1; then
+    inkscape_cmd="$(command -v inkscape)"
+elif [[ -x "/Applications/Inkscape.app/Contents/MacOS/inkscape" ]]; then
+    inkscape_cmd="/Applications/Inkscape.app/Contents/MacOS/inkscape"
+else
+    echo "Error: could not find the Inkscape command-line executable."
+    exit 1
+fi
+
+if [[ ! -x "$strip_script" ]]; then
+    echo "Error: export layer helper is not executable:"
+    echo "  $strip_script"
+    exit 1
+fi
+
+# Export from a disposable SVG so working-only layers never enter the generated
+# PDF/PDF_TeX and the editable source is never touched.
+tmp_base="$(mktemp "$svg_dir/.${svg:t:r}.export.XXXXXX")"
+tmp_svg="$tmp_base.svg"
+mv "$tmp_base" "$tmp_svg"
+
+cleanup() {
+    rm -f "$tmp_svg"
+}
+trap cleanup EXIT INT TERM HUP
+
+# Default exclusion handles both `10 - GUIDES` and the template's current
+# `10 – Guides`, because the helper normalizes dash variants and case.
+"$strip_script" \
+    "$svg" \
+    "$tmp_svg" \
+    --exclude-layer "${NOAH_INKSCAPE_GUIDES_LAYER:-10 - GUIDES}"
+
+echo "Exporting:"
+echo "  $svg"
+
+"$inkscape_cmd" \
+    "$tmp_svg" \
+    --export-type=pdf \
+    --export-filename="$pdf" \
+    --export-latex \
+    --export-area-drawing
+
+if [[ ! -f "$pdf" ]]; then
+    echo "Error: PDF export failed:"
+    echo "  $pdf"
+    exit 1
+fi
+
+if [[ ! -f "$pdf_tex" ]]; then
+    echo "Error: LaTeX export failed:"
+    echo "  $pdf_tex"
+    exit 1
+fi
+
+echo "Created:"
+echo "  $pdf"
+echo "  $pdf_tex"

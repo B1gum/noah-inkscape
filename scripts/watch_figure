@@ -1,0 +1,116 @@
+#!/bin/zsh
+
+set -u
+
+if [[ $# -ne 1 ]]; then
+    echo "Usage: watch_figure path/to/figure.svg"
+    exit 1
+fi
+
+svg="$1"
+
+if [[ ! -f "$svg" ]]; then
+    echo "Error: SVG does not exist:"
+    echo "  $svg"
+    exit 1
+fi
+
+if ! command -v fswatch >/dev/null 2>&1; then
+    echo "Error: fswatch is not installed."
+    echo "Install it with:"
+    echo "  brew install fswatch"
+    exit 1
+fi
+
+svg_dir="$(cd "$(dirname "$svg")" && pwd)"
+svg="$svg_dir/$(basename "$svg")"
+
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+export_script="$script_dir/export_figure"
+
+if [[ ! -x "$export_script" ]]; then
+    echo "Error: export_figure is not executable:"
+    echo "  $export_script"
+    exit 1
+fi
+
+# -------------------------------------------------------------------------
+# One watcher per SVG + lifecycle metadata for Hammerspoon
+# -------------------------------------------------------------------------
+
+state_dir="${TMPDIR:-/tmp}/noah-inkscape"
+mkdir -p "$state_dir"
+
+key="$(printf '%s' "$svg" | md5 -q)"
+pid_file="$state_dir/$key.pid"
+path_file="$state_dir/$key.path"
+seen_file="$state_dir/$key.seen"
+log_file="$state_dir/$key.log"
+
+if [[ -f "$pid_file" ]]; then
+    old_pid="$(cat "$pid_file" 2>/dev/null || true)"
+
+    if [[ "$old_pid" =~ '^[0-9]+$' ]] \
+        && kill -0 "$old_pid" 2>/dev/null
+    then
+        exit 0
+    fi
+
+    rm -f "$pid_file" "$path_file" "$seen_file"
+fi
+
+echo "$$" > "$pid_file"
+printf '%s\n' "$svg" > "$path_file"
+rm -f "$seen_file"
+
+fswatch_pid=""
+event_file="$state_dir/$key.events"
+: > "$event_file"
+
+cleanup() {
+    # The watcher shell owns fswatch. Explicitly terminate the child as well so
+    # closing an Inkscape document cannot leave an orphaned fswatch process.
+    if [[ -n "${fswatch_pid:-}" ]] && kill -0 "$fswatch_pid" 2>/dev/null; then
+        kill -TERM "$fswatch_pid" 2>/dev/null || true
+        wait "$fswatch_pid" 2>/dev/null || true
+    fi
+
+    rm -f "$event_file"
+
+    if [[ -f "$pid_file" ]]; then
+        current_pid="$(cat "$pid_file" 2>/dev/null || true)"
+        if [[ "$current_pid" == "$$" ]]; then
+            rm -f "$pid_file" "$path_file" "$seen_file"
+        fi
+    fi
+}
+
+trap cleanup EXIT INT TERM HUP
+
+# Initial export and then a supervised fswatch child. Figure-close cleanup is
+# coordinated by hammerspoon/inkscape_watchers.lua using the .pid/.path files.
+"$export_script" "$svg" >>"$log_file" 2>&1 || true
+
+fswatch -o -l 0.4 "$svg" >>"$event_file" 2>>"$log_file" &
+fswatch_pid=$!
+
+last_count=0
+
+while kill -0 "$fswatch_pid" 2>/dev/null; do
+    current_count="$(wc -l < "$event_file" | tr -d '[:space:]')"
+    current_count="${current_count:-0}"
+
+    if (( current_count > last_count )); then
+        last_count="$current_count"
+        sleep 0.1
+
+        if [[ -f "$svg" ]]; then
+            "$export_script" "$svg" >>"$log_file" 2>&1 || true
+        fi
+    fi
+
+    sleep 0.2
+done
+
+# Preserve fswatch's failure in the log, but do not leave stale state behind.
+wait "$fswatch_pid" 2>/dev/null || true
