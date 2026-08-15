@@ -128,7 +128,7 @@ function M.pick(opts)
     local items = figure_items(figures_dir)
 
     pickers.new(opts, {
-        prompt_title = "Figures  <CR>: open  <C-n>: new",
+        prompt_title = "Figures  <CR>: open  <C-a>: new",
 
         finder = finders.new_table({
             results = items,
@@ -164,8 +164,8 @@ function M.pick(opts)
                 end)
             end
 
-            map("i", "<C-n>", create_from_prompt)
-            map("n", "<C-n>", create_from_prompt)
+            map("i", "<C-a>", create_from_prompt)
+            map("n", "<C-a>", create_from_prompt)
 
             actions.select_default:replace(function()
                 local selection =

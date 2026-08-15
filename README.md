@@ -151,13 +151,13 @@ Example:
 '   enter style mode
 h   heavy
 :   light-dashed
-x   force arrow
+f   force arrow
 '   leave style mode
 ```
 
 ## Engineering symbols
 
-The Hammerspoon symbol chooser fuzzy-searches reusable SVG symbols. `Shift+Y`
+The Hammerspoon symbol chooser fuzzy-searches reusable SVG symbols. `Shift+S`
 opens it anywhere in Inkscape, independent of style mode. Press Enter to insert
 ordinary editable SVG geometry, or Shift+Enter to open the selected symbol's
 source sheet.
@@ -481,6 +481,8 @@ select a profile by name. Instead it programmatically presses the hotkey of a
 
 The exact hotkey currently expected by `hammerspoon/inkscape_latex.lua` is:
 
+> This is an **internal transport shortcut**, not part of the human-facing Hammerspoon Hyper layer (`⌘⇧`). It intentionally stays on the old full-modifier chord so it cannot collide with mnemonic course shortcuts such as `⌘⇧L`.
+
 ```text
 Control + Option + Shift + Command + L
 ```
@@ -633,7 +635,7 @@ Select `+ New figure…` and press **Enter**, then enter a name.
 Alternatively type the desired name into the main Telescope prompt and press:
 
 ```text
-Ctrl-N
+Ctrl-A
 ```
 
 The workflow then opens the template picker.
@@ -920,19 +922,19 @@ When style mode is ON, the following bare keys become semantic style commands.
 
 | Key | Meaning |
 |---|---|
-| `æ` | remove arrow marker |
+| `n` | no arrow / remove arrow marker |
 | `a` | axes arrow |
-| `x` | force arrow |
+| `f` | force arrow |
 
 ## Symbols
 
 The symbol picker is independent of style mode:
 
 ```text
-Shift+Y    open symbol picker from anywhere in Inkscape
+Shift+S    open symbol picker from anywhere in Inkscape
 ```
 
-Bare `y` is left alone. `Shift+Y` works with style mode both ON and OFF.
+Bare `s` retains its normal Inkscape meaning outside style mode. `Shift+S` works with style mode both ON and OFF.
 
 ## Why the commands compose
 
@@ -998,7 +1000,7 @@ keep drawing/workbench sources there without polluting the insertable library.
 In Inkscape:
 
 ```text
-Shift+Y    symbol picker
+Shift+S    symbol picker
 ```
 
 This shortcut is always available while Inkscape is frontmost; style mode does
@@ -1562,8 +1564,7 @@ Check the iTerm setup in this order:
 6. Hammerspoon has Accessibility permission.
 7. `inkscape_latex` is started from Hammerspoon.
 
-You can test the iTerm half independently by pressing the five-modifier hotkey
-manually. The dedicated terminal should show/hide even before Hammerspoon is
+You can test the iTerm half independently by pressing the full-modifier hotkey manually. The dedicated terminal should show/hide even before Hammerspoon is
 involved.
 
 ---

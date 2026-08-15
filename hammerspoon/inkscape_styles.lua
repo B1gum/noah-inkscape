@@ -165,9 +165,9 @@ local operations = {
     [":"] = op_lightdashed,
     [";"] = op_dashed,
 
-    ["æ"] = op_no_arrow,
+    n = op_no_arrow,
     a = op_axes_arrow,
-    x = op_force_arrow,
+    f = op_force_arrow,
 }
 
 -----------------------------------------------------------------------
@@ -190,7 +190,7 @@ end
 -- GTK/macOS accessibility bridge. Instead:
 --
 --   '        toggles style mode on/off
---   Shift+Y   opens the symbol picker at all times while Inkscape is frontmost
+--   Shift+S   opens the symbol picker at all times while Inkscape is frontmost
 --   mode OFF  -> every other key passes through normally
 --   mode ON   -> style keys are intercepted
 --
@@ -296,9 +296,10 @@ local function handleEvent(ev)
         return toggleStyleMode(keycode)
     end
 
-    -- Symbol picker is deliberately independent of style mode. Shift+Y is an
-    -- Inkscape-wide workflow shortcut; bare y remains completely untouched.
-    local symbolKey = require("inkscape_symbols").config.shortcut_key or "y"
+    -- Symbol picker is deliberately independent of style mode. Shift+S is an
+    -- Inkscape-wide workflow shortcut; bare s keeps its normal meaning outside
+    -- style mode.
+    local symbolKey = require("inkscape_symbols").config.shortcut_key or "s"
     if flags.shift and chars:lower() == symbolKey:lower() then
         swallowed[keycode] = true
         require("inkscape_symbols").show()

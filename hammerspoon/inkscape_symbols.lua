@@ -8,9 +8,9 @@ M.config = {
     inkscape_app_name = "Inkscape",
     inkscape_mime = "image/x-inkscape-svg",
 
-    -- Shift+Y is handled by inkscape_styles.lua as an Inkscape-wide shortcut;
+    -- Shift+S is handled by inkscape_styles.lua as an Inkscape-wide shortcut;
     -- it works whether or not the bare-key style mode is enabled.
-    shortcut_key = "y",
+    shortcut_key = "s",
 
     chooser_rows = 14,
     chooser_width = 56,
