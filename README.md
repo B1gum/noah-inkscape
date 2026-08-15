@@ -276,8 +276,8 @@ Hammerspoon supplies:
 ### Git / HTTPS
 
 ```sh
-git clone https://github.com/B1gum/noah-inkscape.git ~/code/noah-inkscape
-cd ~/code/noah-inkscape
+git clone https://github.com/B1gum/noah-inkscape.git ~/.config/noah-inkscape
+cd ~/.config/noah-inkscape
 ```
 
 ### Git / SSH
@@ -285,8 +285,8 @@ cd ~/code/noah-inkscape
 If GitHub SSH is already configured:
 
 ```sh
-git clone git@github.com:B1gum/noah-inkscape.git ~/code/noah-inkscape
-cd ~/code/noah-inkscape
+git clone git@github.com:B1gum/noah-inkscape.git ~/.config/noah-inkscape
+cd ~/.config/noah-inkscape
 ```
 
 ### GitHub ZIP
@@ -300,7 +300,7 @@ are going to symlink configuration files to it.
 For the commands below, replace:
 
 ```text
-~/code/noah-inkscape
+~/.config/noah-inkscape
 ```
 
 with the actual repository path if you use another location.
@@ -348,7 +348,7 @@ command -v nvim
 Git normally preserves the executable bits. If needed:
 
 ```sh
-cd ~/code/noah-inkscape
+cd ~/.config/noah-inkscape
 chmod +x scripts/*
 ```
 
@@ -361,7 +361,7 @@ The simplest setup is to symlink the module into the normal Lua path:
 ```sh
 mkdir -p ~/.config/nvim/lua
 ln -sfn \
-  ~/code/noah-inkscape/nvim/lua/noah-inkscape \
+  ~/.config/noah-inkscape/nvim/lua/noah-inkscape \
   ~/.config/nvim/lua/noah-inkscape
 ```
 
@@ -422,16 +422,16 @@ Create symlinks for the four modules:
 ```sh
 mkdir -p ~/.hammerspoon
 
-ln -sf ~/code/noah-inkscape/hammerspoon/inkscape_styles.lua \
+ln -sf ~/.config/noah-inkscape/hammerspoon/inkscape_styles.lua \
   ~/.hammerspoon/inkscape_styles.lua
 
-ln -sf ~/code/noah-inkscape/hammerspoon/inkscape_symbols.lua \
+ln -sf ~/.config/noah-inkscape/hammerspoon/inkscape_symbols.lua \
   ~/.hammerspoon/inkscape_symbols.lua
 
-ln -sf ~/code/noah-inkscape/hammerspoon/inkscape_latex.lua \
+ln -sf ~/.config/noah-inkscape/hammerspoon/inkscape_latex.lua \
   ~/.hammerspoon/inkscape_latex.lua
 
-ln -sf ~/code/noah-inkscape/hammerspoon/inkscape_watchers.lua \
+ln -sf ~/.config/noah-inkscape/hammerspoon/inkscape_watchers.lua \
   ~/.hammerspoon/inkscape_watchers.lua
 ```
 
@@ -597,6 +597,29 @@ between Inkscape packaging/version choices.
 `Noah Technical` contains the semantic technical palette used by this setup.
 
 ---
+
+## 8. Verify a recoverable installation
+
+After installing the links and dependencies, run:
+
+```sh
+./scripts/doctor.sh
+```
+
+The doctor verifies the CLI dependencies, Inkscape availability, the Neovim symlink, all four Hammerspoon symlinks, startup requires, and executable helper scripts. It also prints the few settings that cannot be reliably inspected from a shell: Accessibility permission, the dedicated iTerm2 hotkey window, palette installation, and an end-to-end Shift+T/export test.
+
+### Fresh-Mac recovery summary
+
+For the standard layout used by the rest of the workflow, prefer the canonical checkout:
+
+```sh
+git clone https://github.com/B1gum/noah-inkscape.git ~/.config/noah-inkscape
+cd ~/.config/noah-inkscape
+brew install fswatch chafa python neovim
+brew install --cask inkscape hammerspoon iterm2
+```
+
+Then repeat steps 4–7 above, reload Hammerspoon, and run `./scripts/doctor.sh`. The repository contains the source SVG templates, semantic palettes, symbols, Neovim module, Hammerspoon modules, and helper scripts; generated PDF/pdf_tex output and temporary caches are intentionally not backed up.
 
 # Neovim workflow
 
@@ -1431,7 +1454,7 @@ Open/run the command from a TeX buffer where VimTeX has initialized the project.
 Run:
 
 ```sh
-chmod +x ~/code/noah-inkscape/scripts/*
+chmod +x ~/.config/noah-inkscape/scripts/*
 ```
 
 ---
@@ -1633,7 +1656,7 @@ The symbol module resolves its symlink back to the repository so it can find
 If installed with Git:
 
 ```sh
-cd ~/code/noah-inkscape
+cd ~/.config/noah-inkscape
 git pull
 ```
 
