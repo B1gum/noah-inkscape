@@ -1,0 +1,19 @@
+<?xml version='1.0' encoding='utf-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" width="168mm" height="168mm" viewBox="0 0 168 168" version="1.1" id="svg1" inkscape:version="1.4.3" sodipodi:docname="pulley.svg">
+  <sodipodi:namedview id="namedview1" pagecolor="#ffffff" bordercolor="#000000" borderopacity="0.25" inkscape:showpageshadow="2" inkscape:pageopacity="0.0" inkscape:pagecheckerboard="false" inkscape:deskcolor="#d1d1d1" inkscape:document-units="mm" inkscape:current-layer="layer_symbol" showguides="true" inkscape:lockguides="true" showgrid="true" guidecolor="#0086e5" guideopacity="0.28">
+    <inkscape:grid id="grid1" units="mm" originx="0" originy="0" spacingx="6" spacingy="6" empcolor="#0099e5" empopacity="0.16" color="#0099e5" opacity="0.07" empspacing="2" enabled="true" visible="true" snapvisiblegridlinesonly="true" />
+  </sodipodi:namedview>
+  <defs id="defs1" />
+  <g inkscape:label="30 - Symbol" inkscape:groupmode="layer" id="layer_symbol" data-symbol-name="Pulley" data-symbol-notes="reference: hub centre; top lead available for support"><g id="symbol-artwork" inkscape:label="Pulley" transform="translate(24,24)"><circle cx="60" cy="60" r="26.4" style="fill:none;stroke:#000000;stroke-width:0.35;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" id="rim" /><circle cx="60" cy="60" r="22.2" style="fill:none;stroke:#000000;stroke-width:0.25;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" id="groove" /><circle cx="60" cy="60" r="4.5" style="fill:none;stroke:#000000;stroke-width:0.35;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" id="hub" /><path d="M 60,33.6 L 60,25.2" style="fill:none;stroke:#000000;stroke-width:0.35;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" id="support_lead" /></g></g>
+  <g inkscape:label="20 – Construction" inkscape:groupmode="layer" id="layer_construction" />
+  <g inkscape:label="10 – Guides" inkscape:groupmode="layer" id="layer_guides" style="display:inline" sodipodi:insensitive="true">
+    <rect style="fill:none;stroke:#a0a0a0;stroke-width:0.2;stroke-miterlimit:35.2;stroke-dasharray:4.8,4.8;stroke-dashoffset:0;stroke-opacity:1" id="rect_outer" width="120" height="120" x="24" y="24" />
+    <rect style="fill:none;stroke:#3f88c5;stroke-width:0.25;stroke-miterlimit:35.2;stroke-dasharray:6,3;stroke-dashoffset:0;stroke-opacity:1" id="rect_nominal" width="72" height="72" x="48" y="48" />
+    <path style="fill:none;stroke:#8a8a8a;stroke-width:0.2;stroke-miterlimit:35.2;stroke-dasharray:4.8,4.8;stroke-dashoffset:0;stroke-opacity:1" d="M 84,24 V 144" id="path_v" />
+    <path style="fill:none;stroke:#8a8a8a;stroke-width:0.2;stroke-miterlimit:35.2;stroke-dasharray:4.8,4.8;stroke-dashoffset:0;stroke-opacity:1" d="M 24,84 H 144" id="path_h" />
+    <circle style="fill:none;stroke:#3f88c5;stroke-width:0.25;stroke-miterlimit:35.2;stroke-opacity:1" id="origin_ring" cx="84" cy="84" r="4.5" />
+    <path style="fill:none;stroke:#3f88c5;stroke-width:0.25;stroke-linecap:round;stroke-miterlimit:35.2;stroke-opacity:1" d="M 78.9,84 H 89.1" id="origin_h" />
+    <path style="fill:none;stroke:#3f88c5;stroke-width:0.25;stroke-linecap:round;stroke-miterlimit:35.2;stroke-opacity:1" d="M 84,78.9 V 89.1" id="origin_v" />
+  </g>
+  <g inkscape:label="00 - Background" inkscape:groupmode="layer" id="layer_bg" style="display:inline" />
+</svg>

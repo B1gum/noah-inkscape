@@ -2,14 +2,25 @@
 
 set -euo pipefail
 
-if [[ $# -lt 2 || $# -gt 3 ]]; then
-    echo "Usage: render_thumbnail input.svg output.png [size-px]" >&2
+if [[ $# -lt 2 || $# -gt 4 ]]; then
+    echo "Usage: render_thumbnail input.svg output.png [size-px] [mode]" >&2
     exit 1
 fi
 
 svg="$1"
 out="$2"
 size="${3:-512}"
+mode="${4:-transparent}"
+
+extra_args=()
+if [[ "$mode" == "chooser" ]]; then
+    # The Hammerspoon chooser is dark and has a fixed-size image well. Crop to
+    # the actual drawing, add a small visual margin, and put it on white so
+    # black technical strokes remain legible at icon size.
+    extra_args+=(--export-margin=4)
+    extra_args+=(--export-background="#ffffff")
+    extra_args+=(--export-background-opacity=1)
+fi
 
 if [[ ! -f "$svg" ]]; then
     echo "Error: SVG does not exist: $svg" >&2
@@ -34,6 +45,7 @@ if ! "$inkscape_cmd" \
     --export-type=png \
     --export-filename="$out" \
     --export-area-drawing \
+    "${extra_args[@]}" \
     --export-width="$size" \
     >/dev/null 2>&1
 then
@@ -42,6 +54,7 @@ then
         --export-type=png \
         --export-filename="$out" \
         --export-area-page \
+        "${extra_args[@]}" \
         --export-width="$size" \
         >/dev/null 2>&1
 fi

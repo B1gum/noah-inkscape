@@ -8,13 +8,22 @@ M.config = {
     inkscape_app_name = "Inkscape",
     inkscape_mime = "image/x-inkscape-svg",
 
-    -- The bare-key trigger is handled by inkscape_styles.lua so the symbol
-    -- picker participates in the same Inkscape-only style/input layer.
+    -- Shift+Y is handled by inkscape_styles.lua as an Inkscape-wide shortcut;
+    -- it works whether or not the bare-key style mode is enabled.
     shortcut_key = "y",
 
-    chooser_rows = 12,
-    chooser_width = 44,
-    thumbnail_size = 48,
+    chooser_rows = 14,
+    chooser_width = 56,
+
+    -- hs.chooser itself uses a fixed row height, so its inline image well is
+    -- inherently small. These values control the compact row icon and the
+    -- much larger live preview panel shown beside the chooser.
+    thumbnail_size = 96,
+    thumbnail_render_size = 1024,
+    preview_width_fraction = 0.30,
+    preview_max_width = 460,
+    preview_gap = 18,
+    preview_poll_interval = 0.08,
 
     paste_menu = { "Edit", "Paste" },
     copy_menu = { "Edit", "Copy" },
@@ -46,6 +55,8 @@ local REPO_ROOT = dirname(HAMMERSPOON_DIR)
 
 M.config.repo_root = REPO_ROOT
 M.config.symbols_dir = REPO_ROOT .. "/symbols"
+M.config.symbol_sources_dir = M.config.symbols_dir .. "/_sources"
+M.config.symbol_template = REPO_ROOT .. "/templates/noah-symbol-sheet.svg"
 
 ------------------------------------------------------------------------
 -- Small helpers
@@ -75,6 +86,14 @@ local function write_file(path, data)
     f:write(data)
     f:close()
     return true
+end
+
+local function copy_file(source, destination)
+    local data, err = read_file(source)
+    if not data then
+        return nil, err
+    end
+    return write_file(destination, data)
 end
 
 local function file_exists(path)
@@ -134,38 +153,49 @@ local function is_svg_file(path)
     return path:lower():match("%.svg$") ~= nil
 end
 
-local function symbol_thumbnail(path)
-    -- hs.chooser accepts a real hs.image for each row. Try native SVG loading
-    -- first; when macOS/NSImage cannot decode a particular SVG, render a cached
-    -- PNG with Inkscape so the chooser still shows the symbol itself rather
-    -- than a generic file icon.
-    local image = hs.image.imageFromPath(path)
-
-    if not image then
-        local cache_dir = (os.getenv("TMPDIR") or "/tmp"):gsub("/+$", "")
-            .. "/noah-inkscape/symbol-thumbnails"
-        ensure_directory(cache_dir)
-
-        local relative = relative_path(M.config.symbols_dir, path)
-        local cache_name = relative:gsub("[^%w%._%-]", "_"):gsub("%.svg$", ".png")
-        local thumb = cache_dir .. "/" .. cache_name
-        local source_attrs = hs.fs.attributes(path)
-        local thumb_attrs = hs.fs.attributes(thumb)
-        local stale = not thumb_attrs
-            or (source_attrs and source_attrs.modification > thumb_attrs.modification)
-
-        if stale then
-            local renderer = M.config.repo_root .. "/scripts/render_thumbnail"
-            local command = shell_quote(renderer)
-                .. " " .. shell_quote(path)
-                .. " " .. shell_quote(thumb)
-                .. " 256 >/dev/null 2>&1"
-            hs.execute(command, false)
+local function is_hidden_symbol_path(root, path)
+    local relative = relative_path(root, path)
+    for component in relative:gmatch("[^/]+") do
+        if component:match("^[._]") then
+            return true
         end
+    end
+    return false
+end
 
-        image = hs.image.imageFromPath(thumb)
+local function rendered_symbol_image(path)
+    -- Always render a tightly-cropped PNG for chooser use. Loading the SVG
+    -- directly makes NSImage preserve the SVG page/viewBox, which leaves lots
+    -- of empty space around these technical symbols and makes them look tiny.
+    -- The renderer uses drawing bounds, a small margin, and a light background
+    -- so black technical strokes remain crisp in Hammerspoon's dark chooser.
+    local cache_dir = (os.getenv("TMPDIR") or "/tmp"):gsub("/+$", "")
+        .. "/noah-inkscape/symbol-thumbnails-v2"
+    ensure_directory(cache_dir)
+
+    local relative = relative_path(M.config.symbols_dir, path)
+    local cache_name = relative:gsub("[^%w%._%-]", "_"):gsub("%.svg$", ".png")
+    local thumb = cache_dir .. "/" .. cache_name
+    local source_attrs = hs.fs.attributes(path)
+    local thumb_attrs = hs.fs.attributes(thumb)
+    local stale = not thumb_attrs
+        or (source_attrs and source_attrs.modification > thumb_attrs.modification)
+
+    if stale then
+        local renderer = M.config.repo_root .. "/scripts/render_thumbnail"
+        local command = shell_quote(renderer)
+            .. " " .. shell_quote(path)
+            .. " " .. shell_quote(thumb)
+            .. " " .. tostring(M.config.thumbnail_render_size)
+            .. " chooser >/dev/null 2>&1"
+        hs.execute(command, false)
     end
 
+    return hs.image.imageFromPath(thumb)
+end
+
+local function symbol_thumbnail(path)
+    local image = rendered_symbol_image(path)
     if not image then
         return nil
     end
@@ -192,7 +222,7 @@ local function discover_symbols()
     local symbols = {}
 
     for _, path in ipairs(files) do
-        if is_svg_file(path) then
+        if is_svg_file(path) and not is_hidden_symbol_path(M.config.symbols_dir, path) then
             local relative = relative_path(M.config.symbols_dir, path)
             local basename = relative:match("([^/]+)$") or relative
             local display = humanize(basename)
@@ -203,7 +233,7 @@ local function discover_symbols()
                 path = path,
                 relative = relative,
                 text = display,
-                subText = category,
+                subText = category .. "   ↵ insert   ⇧↵ source",
                 searchText = display .. " " .. relative .. " " .. category,
                 image = symbol_thumbnail(path),
             })
@@ -224,6 +254,12 @@ local function all_choices()
             text = "＋ New symbol from selection…",
             subText = "Save the current Inkscape selection into symbols/",
             searchText = "new symbol create save selection",
+        },
+        {
+            kind = "new_symbol_sheet",
+            text = "＋ New symbol sheet…",
+            subText = "Create a symbol workspace from noah-symbol-sheet.svg",
+            searchText = "new symbol sheet template workspace draw",
         },
         {
             kind = "open_folder",
@@ -509,12 +545,297 @@ local function create_symbol_from_selection(app)
 end
 
 ------------------------------------------------------------------------
+-- Create a new symbol workspace from the symbol-sheet template
+------------------------------------------------------------------------
+
+local function open_svg_in_inkscape(path, app)
+    local opener = M.config.repo_root .. "/scripts/open_figure"
+    local command = shell_quote(opener) .. " " .. shell_quote(path) .. " >/dev/null 2>&1 &"
+
+    if app then
+        app:activate(true)
+    end
+
+    hs.execute(command, false)
+end
+
+local function create_symbol_sheet(app)
+    local button, input = hs.dialog.textPrompt(
+        "New symbol sheet",
+        "Name it. You can include a category, e.g. dynamics/spring",
+        "",
+        "Create",
+        "Cancel"
+    )
+
+    if button ~= "Create" then
+        return
+    end
+
+    local relative, name_err = normalize_symbol_name(input)
+    if not relative then
+        hs.alert.show(name_err)
+        return
+    end
+
+    if not file_exists(M.config.symbol_template) then
+        hs.alert.show("Symbol template not found")
+        return
+    end
+
+    local destination = M.config.symbol_sources_dir .. "/" .. relative
+    local parent = dirname(destination)
+
+    if file_exists(destination) then
+        hs.alert.show("Symbol sheet already exists: " .. relative)
+        open_svg_in_inkscape(destination, app)
+        return
+    end
+
+    if not ensure_directory(parent) then
+        hs.alert.show("Could not create symbol-sheet directory")
+        return
+    end
+
+    local ok, err = copy_file(M.config.symbol_template, destination)
+    if not ok then
+        hs.alert.show("Could not create symbol sheet: " .. tostring(err))
+        return
+    end
+
+    hs.alert.show("Created symbol sheet: _sources/" .. relative)
+    open_svg_in_inkscape(destination, app)
+end
+
+local function open_symbol_source(choice, app)
+    if not choice or choice.kind ~= "symbol" then
+        hs.alert.show("Shift+Enter is available for saved symbols")
+        return
+    end
+
+    local source = M.config.symbol_sources_dir .. "/" .. choice.relative
+
+    if file_exists(source) then
+        open_svg_in_inkscape(source, app)
+        return
+    end
+
+    -- Older/library-only symbols may not have a workbench sheet. They are still
+    -- editable SVGs, so opening the clean library file is a safe fallback.
+    hs.alert.show("No source sheet yet — opening the library SVG")
+    open_svg_in_inkscape(choice.path, app)
+end
+
+------------------------------------------------------------------------
+-- Large live symbol preview
+------------------------------------------------------------------------
+
+M._preview_canvas = nil
+M._preview_timer = nil
+M._preview_key = nil
+M._preview_frame = nil
+
+local function destroy_preview()
+    if M._preview_timer then
+        M._preview_timer:stop()
+        M._preview_timer = nil
+    end
+
+    if M._preview_canvas then
+        M._preview_canvas:delete()
+        M._preview_canvas = nil
+    end
+
+    M._preview_key = nil
+    M._preview_frame = nil
+end
+
+local function chooser_layout()
+    local focused = hs.window.focusedWindow()
+    local screen = focused and focused:screen() or hs.screen.mainScreen()
+    local frame = screen:frame()
+
+    local chooser_w = frame.w * (M.config.chooser_width / 100)
+    local preview_w = math.min(M.config.preview_max_width, frame.w * M.config.preview_width_fraction)
+    local gap = M.config.preview_gap
+    local total_w = chooser_w + gap + preview_w
+    local left = frame.x + math.max(12, (frame.w - total_w) / 2)
+    local top = frame.y + math.max(20, frame.h * 0.07)
+    local preview_h = math.min(preview_w + 96, frame.h * 0.62)
+
+    return {
+        chooser = { x = left, y = top },
+        preview = {
+            x = left + chooser_w + gap,
+            y = top,
+            w = preview_w,
+            h = preview_h,
+        },
+    }
+end
+
+local function make_preview_canvas(frame)
+    local padding = 22
+    local footer_h = 74
+    local image_h = frame.h - footer_h - (padding * 2)
+
+    local canvas = hs.canvas.new(frame)
+    canvas[1] = {
+        type = "rectangle",
+        action = "strokeAndFill",
+        fillColor = { white = 0.97, alpha = 0.98 },
+        strokeColor = { white = 0.72, alpha = 0.8 },
+        strokeWidth = 1,
+        roundedRectRadii = { xRadius = 12, yRadius = 12 },
+        withShadow = true,
+        shadow = {
+            blurRadius = 16,
+            color = { white = 0, alpha = 0.28 },
+            offset = { h = 3, w = 0 },
+        },
+    }
+    canvas[2] = {
+        id = "previewImage",
+        type = "image",
+        action = "skip",
+        frame = { x = padding, y = padding, w = frame.w - 2 * padding, h = image_h },
+        imageScaling = "scaleProportionally",
+        imageAlignment = "center",
+    }
+    canvas[3] = {
+        id = "previewTitle",
+        type = "text",
+        text = "Select a symbol",
+        frame = { x = padding, y = frame.h - footer_h, w = frame.w - 2 * padding, h = 30 },
+        textColor = { white = 0.10, alpha = 1 },
+        textSize = 19,
+        textLineBreak = "truncateTail",
+    }
+    canvas[4] = {
+        id = "previewSubtext",
+        type = "text",
+        text = "↑/↓ to preview · Enter inserts · Shift+Enter opens source",
+        frame = { x = padding, y = frame.h - footer_h + 31, w = frame.w - 2 * padding, h = 35 },
+        textColor = { white = 0.38, alpha = 1 },
+        textSize = 12,
+        textLineBreak = "wordWrap",
+    }
+
+    canvas:show():bringToFront(false)
+    return canvas
+end
+
+local function update_preview()
+    if not M.chooser or not M.chooser:isVisible() or not M._preview_canvas then
+        return
+    end
+
+    local choice = M.chooser:selectedRowContents()
+    if not choice or next(choice) == nil then
+        return
+    end
+
+    local key = tostring(choice.kind or "") .. "|" .. tostring(choice.relative or choice.text or "")
+    if key == M._preview_key then
+        return
+    end
+    M._preview_key = key
+
+    if choice.kind == "symbol" and choice.path then
+        local image = rendered_symbol_image(choice.path)
+        if image then
+            M._preview_canvas.previewImage.image = image
+            M._preview_canvas.previewImage.action = "fill"
+        else
+            M._preview_canvas.previewImage.action = "skip"
+        end
+        M._preview_canvas.previewTitle.text = choice.text or "Symbol"
+        M._preview_canvas.previewSubtext.text = (choice.subText or "symbols")
+            .. "   ·   Enter inserts   ·   Shift+Enter opens source"
+    else
+        M._preview_canvas.previewImage.action = "skip"
+        M._preview_canvas.previewTitle.text = choice.text or "Symbol action"
+        M._preview_canvas.previewSubtext.text = choice.subText or ""
+    end
+end
+
+local function start_preview()
+    if not M._preview_frame then
+        return
+    end
+
+    if M._preview_canvas then
+        M._preview_canvas:delete()
+    end
+    M._preview_canvas = make_preview_canvas(M._preview_frame)
+    M._preview_key = nil
+    update_preview()
+
+    if M._preview_timer then
+        M._preview_timer:stop()
+    end
+    M._preview_timer = hs.timer.doEvery(M.config.preview_poll_interval, update_preview)
+end
+
+------------------------------------------------------------------------
 -- Chooser
 ------------------------------------------------------------------------
 
 M.chooser = nil
 M._source_app = nil
 M._choices = nil
+M._source_hotkeys = nil
+
+local function disable_source_hotkeys()
+    if not M._source_hotkeys then
+        return
+    end
+
+    for _, hotkey in ipairs(M._source_hotkeys) do
+        hotkey:disable()
+    end
+end
+
+local function open_selected_source()
+    if not M.chooser or not M.chooser:isVisible() then
+        return
+    end
+
+    local choice = M.chooser:selectedRowContents()
+    if not choice or next(choice) == nil then
+        return
+    end
+
+    local app = M._source_app
+    M.chooser:hide()
+
+    -- Let the chooser disappear before bringing Inkscape forward again.
+    hs.timer.doAfter(0.04, function()
+        open_symbol_source(choice, app)
+    end)
+end
+
+local function ensure_source_hotkeys()
+    if M._source_hotkeys then
+        return
+    end
+
+    M._source_hotkeys = {}
+
+    for _, key in ipairs({ "return", "padenter" }) do
+        local hotkey = hs.hotkey.new({ "shift" }, key, open_selected_source)
+        if hotkey then
+            table.insert(M._source_hotkeys, hotkey)
+        end
+    end
+end
+
+local function enable_source_hotkeys()
+    ensure_source_hotkeys()
+    for _, hotkey in ipairs(M._source_hotkeys) do
+        hotkey:enable()
+    end
+end
 
 local function handle_choice(choice)
     if not choice then
@@ -527,6 +848,8 @@ local function handle_choice(choice)
         insert_symbol(choice.path, app)
     elseif choice.kind == "new_symbol" then
         create_symbol_from_selection(app)
+    elseif choice.kind == "new_symbol_sheet" then
+        create_symbol_sheet(app)
     elseif choice.kind == "open_folder" then
         hs.open(M.config.symbols_dir)
     end
@@ -543,15 +866,29 @@ function M.show()
     M._choices = all_choices()
 
     if M.chooser then
+        disable_source_hotkeys()
+        destroy_preview()
         M.chooser:delete()
         M.chooser = nil
     end
 
+    local layout = chooser_layout()
+    M._preview_frame = layout.preview
+
     local chooser
     chooser = hs.chooser.new(handle_choice)
-        :placeholderText("Search engineering symbols…")
+        :placeholderText("Search symbols…  Enter inserts · Shift+Enter opens source")
         :rows(M.config.chooser_rows)
         :width(M.config.chooser_width)
+
+    chooser:showCallback(function()
+        enable_source_hotkeys()
+        start_preview()
+    end)
+    chooser:hideCallback(function()
+        disable_source_hotkeys()
+        destroy_preview()
+    end)
 
     -- Supplying queryChangedCallback disables hs.chooser's normal substring
     -- filtering and lets us supply fuzzy-ranked results ourselves.
@@ -568,7 +905,7 @@ function M.show()
     chooser:selectedRow(1)
 
     M.chooser = chooser
-    chooser:show()
+    chooser:show(layout.chooser)
 end
 
 function M.refresh()

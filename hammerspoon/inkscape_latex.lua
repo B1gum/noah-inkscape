@@ -48,6 +48,7 @@ local PASTE_MENU = { "Edit", "Paste" }
 local PASTE_IN_PLACE_MENU = { "Edit", "Paste...", "In Place" }
 local COPY_MENU = { "Edit", "Copy" }
 local DELETE_MENU = { "Edit", "Delete" }
+local UNDO_MENU = { "Edit", "Undo" }
 
 ------------------------------------------------------------------------
 -- Small helpers
@@ -524,6 +525,17 @@ local function finish_session(session)
     end
 
     focus_inkscape(session, function(app)
+        -- Prepare the replacement on the clipboard before mutating the
+        -- document. This makes editing transactional: a clipboard failure
+        -- can no longer delete the original label.
+        local ok = hs.pasteboard.writeDataForUTI(M.config.inkscape_mime, svg)
+        if not ok then
+            restore_clipboard(session)
+            cleanup_session(session)
+            hs.alert.show("Could not put the LaTeX label on the Inkscape clipboard")
+            return
+        end
+
         if session.original_svg then
             -- Use Inkscape's menu directly rather than a global Delete key.
             -- That prevents a slow focus transition from sending keystrokes
@@ -535,14 +547,6 @@ local function finish_session(session)
                 hs.alert.show("Could not delete the original Inkscape label")
                 return
             end
-        end
-
-        local ok = hs.pasteboard.writeDataForUTI(M.config.inkscape_mime, svg)
-        if not ok then
-            restore_clipboard(session)
-            cleanup_session(session)
-            hs.alert.show("Could not put the LaTeX label on the Inkscape clipboard")
-            return
         end
 
         hs.timer.doAfter(0.04, function()
@@ -558,6 +562,10 @@ local function finish_session(session)
             end
 
             if not pasted then
+                if session.original_svg then
+                    -- Restore the deletion if replacement paste failed.
+                    app:selectMenuItem(UNDO_MENU)
+                end
                 hs.alert.show("Could not paste the edited label into Inkscape")
             end
 

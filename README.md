@@ -157,8 +157,10 @@ x   force arrow
 
 ## Engineering symbols
 
-The Hammerspoon symbol chooser fuzzy-searches reusable SVG symbols. Symbols can
-be inserted into Inkscape as ordinary editable SVG geometry.
+The Hammerspoon symbol chooser fuzzy-searches reusable SVG symbols. `Shift+Y`
+opens it anywhere in Inkscape, independent of style mode. Press Enter to insert
+ordinary editable SVG geometry, or Shift+Enter to open the selected symbol's
+source sheet.
 
 It can also capture the current Inkscape selection and save it as a new symbol,
 optionally inside a category such as:
@@ -848,18 +850,31 @@ page so the preview still has something meaningful to display.
 
 ## Symbol previews
 
-`hammerspoon/inkscape_symbols.lua` attaches an `hs.image` to each symbol choice.
+The symbol picker uses **two preview levels**:
 
-It first asks macOS to decode the SVG directly. If that fails for a particular
-SVG, it calls `scripts/render_thumbnail` and uses a cached PNG instead.
+1. a compact image inside each normal `hs.chooser` row;
+2. a large live preview panel beside the chooser for the currently highlighted
+   symbol.
 
-Fallback symbol thumbnails live under:
+The row icons are intentionally rendered through `scripts/render_thumbnail`
+instead of loading the SVG page directly. The renderer crops to the symbol's
+actual drawing bounds, adds a small margin, and places the technical black
+strokes on a light background. This makes the limited-size chooser icon much
+more useful.
+
+The large preview panel follows the currently selected row (keyboard or mouse)
+and displays the same tightly-cropped render at several hundred pixels. It is
+implemented with `hs.canvas` because `hs.chooser` itself does not expose a row
+height/image-well size control.
+
+Symbol preview PNGs live under:
 
 ```text
-$TMPDIR/noah-inkscape/symbol-thumbnails/
+$TMPDIR/noah-inkscape/symbol-thumbnails-v2/
 ```
 
-They are also regenerated when the source SVG changes.
+They are regenerated when the source SVG changes. The `v2` cache path is
+intentional so older uncropped thumbnails cannot survive this upgrade.
 
 ---
 
@@ -911,13 +926,13 @@ When style mode is ON, the following bare keys become semantic style commands.
 
 ## Symbols
 
-While style mode is ON:
+The symbol picker is independent of style mode:
 
 ```text
-Shift+Y    open symbol picker
+Shift+Y    open symbol picker from anywhere in Inkscape
 ```
 
-Bare `y` is left alone.
+Bare `y` is left alone. `Shift+Y` works with style mode both ON and OFF.
 
 ## Why the commands compose
 
@@ -965,6 +980,7 @@ Example:
 
 ```text
 symbols/
+├── _sources/                # symbol workspaces made from the symbol sheet
 ├── dynamics/
 │   ├── damper.svg
 │   └── spring.svg
@@ -974,31 +990,61 @@ symbols/
     └── roller_support.svg
 ```
 
+Files under directories beginning with `_` are ignored by the picker, so you can
+keep drawing/workbench sources there without polluting the insertable library.
+
 ## Open the picker
 
 In Inkscape:
 
 ```text
-'          style mode ON
 Shift+Y    symbol picker
 ```
+
+This shortcut is always available while Inkscape is frontmost; style mode does
+not need to be enabled.
 
 The chooser supports fuzzy subsequence matching, so abbreviated searches can
 match longer symbol names/categories.
 
-## Insert a symbol
+## Picker actions
 
-Choose a symbol and press Enter. The module places its SVG on Inkscape's native
-SVG clipboard and invokes Paste.
+For a saved symbol:
 
-The inserted result remains ordinary editable vector content rather than a
-raster screenshot.
+```text
+Enter          insert the clean library symbol into the current drawing
+Shift+Enter    open that symbol's editable source sheet
+```
+
+`Shift+Enter` looks for the corresponding file under `symbols/_sources/`. For
+older symbols without a source sheet it safely opens the clean library SVG
+itself, which is still editable vector content.
+
+As you move through the chooser with the arrow keys or mouse, a large preview
+panel follows the highlighted symbol. The tiny icon in the row remains only a
+compact cue; the side panel is the primary visual preview.
+
+Normal Enter places the SVG on Inkscape's native SVG clipboard and invokes
+Paste. The inserted result remains ordinary editable vector content rather than
+a raster screenshot.
 
 ## Create a new symbol from the current selection
 
 1. Select the desired objects in Inkscape.
 2. Open the symbol picker.
-3. Choose:
+3. Either:
+
+   ```text
+   + New symbol sheet…
+   ```
+
+   to create a dedicated drawing sheet at:
+
+   ```text
+   symbols/_sources/<category>/<name>.svg
+   ```
+
+   or:
 
    ```text
    + New symbol from selection…
@@ -1015,7 +1061,58 @@ Allowed name components contain lowercase letters, numbers, `_` and `-`.
 The module copies the current Inkscape selection and writes its native SVG
 clipboard representation to the new `.svg` file.
 
-The next time the chooser is opened, the symbol is discovered automatically.
+### Recommended workflow
+
+1. Create a new symbol sheet.
+2. Draw the symbol on the `30 - Symbol` layer.
+3. Keep the actual symbol mostly inside the **72 × 72 mm** inner box.
+4. Only exceed that when genuinely necessary, and treat the **120 × 120 mm**
+   outer box as the hard upper bound for a normal reusable symbol.
+5. Select the finished symbol geometry.
+6. Save it with **New symbol from selection…** into its final category.
+
+The next time the chooser is opened, the saved symbol is discovered
+automatically.
+
+The bundled symbol set and the symbol-sheet template are intentionally scaled up to approximately **600%** of the earlier size so inserted symbols are much easier to see and use without immediate resizing.
+
+## Bundled symbol set
+
+The repository now ships with **17 calibrated mechanics symbols**. Every symbol
+has a clean insertable SVG under `symbols/` and a corresponding editable source
+sheet under `symbols/_sources/`.
+
+| Category | Symbol | File | Default orientation / reference |
+|---|---|---|---|
+| Supports | Fixed support | `supports/fixed_support.svg` | vertical wall; attachment at wall centre |
+| Supports | Pinned support | `supports/pinned_support.svg` | ground below; attachment at pin/apex |
+| Supports | Roller support | `supports/roller_support.svg` | ground below; attachment at pin/apex |
+| Supports | Pillow-block bearing | `supports/pillow_block_bearing.svg` | mounting base below; reference at shaft centre |
+| Dynamics | Spring | `dynamics/spring.svg` | horizontal; endpoints are attachments |
+| Dynamics | Damper | `dynamics/damper.svg` | horizontal; endpoints are attachments |
+| Dynamics | Mass block | `dynamics/mass_block.svg` | generic translational mass; side-centre attachment points |
+| Dynamics | Wheel on ground | `dynamics/wheel_ground.svg` | ground below; reference at hub centre |
+| Dynamics | Torsional spring | `dynamics/torsional_spring.svg` | reference at spring centre; outer lead is connection |
+| Dynamics | Rotational damper | `dynamics/rotational_damper.svg` | reference at shaft centre |
+| Joints | Revolute joint | `joints/revolute_joint.svg` | pin centre is the joint reference |
+| Joints | Prismatic joint | `joints/prismatic_joint.svg` | default translation axis horizontal |
+| Mechanisms | Pulley | `mechanisms/pulley.svg` | hub centre is reference |
+| Mechanisms | Gear pair | `mechanisms/gear_pair.svg` | generic external meshing gears |
+| Actuators | Hydraulic cylinder | `actuators/hydraulic_cylinder.svg` | horizontal; eye centres are attachments |
+| Coordinates | 2D coordinate system | `coordinates/axes_2d.svg` | +x right, +y up |
+| Coordinates | 3D coordinate system | `coordinates/axes_3d.svg` | compact oblique +x/+y/+z system |
+
+The set uses the normal **0.35 mm** technical stroke for primary geometry and a
+lighter **0.25 mm** stroke for secondary details. Symbols stay inside the
+72 × 72 mm nominal region wherever practical; only components whose geometry
+benefits from a little more length use some of the surrounding 120 × 120 mm
+working envelope.
+
+The support symbols intentionally contain only the reusable support graphic —
+not a beam/member — so they can be rotated or mirrored and attached to your own
+geometry. Springs, dampers, joints and actuators similarly include only the
+connection geometry needed to make placement fast without forcing a particular
+mechanism layout.
 
 ---
 

@@ -190,9 +190,9 @@ end
 -- GTK/macOS accessibility bridge. Instead:
 --
 --   '        toggles style mode on/off
+--   Shift+Y   opens the symbol picker at all times while Inkscape is frontmost
 --   mode OFF  -> every other key passes through normally
 --   mode ON   -> style keys are intercepted
---               Shift+Y opens the symbol picker
 --
 -- This makes text entry deterministic: turn style mode off before typing.
 -----------------------------------------------------------------------
@@ -296,19 +296,19 @@ local function handleEvent(ev)
         return toggleStyleMode(keycode)
     end
 
-    -- When style mode is OFF, absolutely everything else passes through.
-    -- This is the key property that fixes Save As and normal text editing.
-    if not M.enabled then
-        return false
-    end
-
-    -- Symbol picker: Shift+Y only, and only while style mode is ON.
-    -- Bare y remains completely untouched.
+    -- Symbol picker is deliberately independent of style mode. Shift+Y is an
+    -- Inkscape-wide workflow shortcut; bare y remains completely untouched.
     local symbolKey = require("inkscape_symbols").config.shortcut_key or "y"
     if flags.shift and chars:lower() == symbolKey:lower() then
         swallowed[keycode] = true
         require("inkscape_symbols").show()
         return true
+    end
+
+    -- When style mode is OFF, absolutely everything else passes through.
+    -- This is the key property that fixes Save As and normal text editing.
+    if not M.enabled then
+        return false
     end
 
     -- Semantic style keys are only meaningful in style mode. We use the

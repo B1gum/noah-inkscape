@@ -33,6 +33,34 @@ local function get_project_root()
     return vimtex.root
 end
 
+-- Resolve the figure directory from the course filesystem first.
+--
+-- course/notes/...       -> course/figures/
+-- course/assignments/... -> course/assignments/figures/
+-- anything else          -> <VimTeX root>/figures/ (standalone fallback)
+local function get_figures_dir()
+    local buffer_path = vim.fs.normalize(vim.api.nvim_buf_get_name(0))
+
+    if buffer_path and buffer_path ~= "" then
+        local course_root = buffer_path:match("^(.-)/assignments/")
+        if course_root then
+            return vim.fs.joinpath(course_root, "assignments", "figures")
+        end
+
+        course_root = buffer_path:match("^(.-)/notes/")
+        if course_root then
+            return vim.fs.joinpath(course_root, "figures")
+        end
+    end
+
+    local project_root = get_project_root()
+    if project_root then
+        return vim.fs.joinpath(project_root, "figures")
+    end
+
+    return nil
+end
+
 -- -------------------------------------------------------------------------
 -- LaTeX generation
 -- -------------------------------------------------------------------------
@@ -212,10 +240,15 @@ function M.new(name, caption, template_path)
         "new_figure"
     )
 
-    local figures_dir = vim.fs.joinpath(
-        project_root,
-        "figures"
-    )
+    local figures_dir = get_figures_dir()
+
+    if not figures_dir then
+        vim.notify(
+            "FigureNew: could not resolve figures directory",
+            vim.log.levels.ERROR
+        )
+        return
+    end
 
     if vim.fn.executable(script) ~= 1 then
         vim.notify(
@@ -359,10 +392,15 @@ function M.pick()
         return
     end
 
-    local figures_dir = vim.fs.joinpath(
-        project_root,
-        "figures"
-    )
+    local figures_dir = get_figures_dir()
+
+    if not figures_dir then
+        vim.notify(
+            "Figure: could not resolve figures directory",
+            vim.log.levels.ERROR
+        )
+        return
+    end
 
     require("noah-inkscape.telescope").pick({
         figures_dir = figures_dir,
